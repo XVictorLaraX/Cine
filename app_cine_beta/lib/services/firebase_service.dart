@@ -7,6 +7,7 @@ class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Registro de usuario
   Future<User?> registerWithEmailAndPassword({
     required String email,
     required String password,
@@ -22,29 +23,87 @@ class FirebaseService {
       // 2. Verificar que el usuario fue creado correctamente
       if (userCredential.user == null) return null;
 
-      // 3. Guardar datos en documento específico usando UID
+      // 3. Guardar datos adicionales en Firestore
       await _firestore
-          .collection('Usuarios') // Nombre exacto de tu colección existente
-          .doc(userCredential.user!.uid) // Usar UID como ID de documento
-          .set(userData, SetOptions(merge: true)); // Merge evita sobrescribir datos existentes
+          .collection('Usuarios')
+          .doc(userCredential.user!.uid)
+          .set({
+        ...userData,
+        'uid': userCredential.user!.uid, // Añadir UID a los datos
+        'email': email, // Asegurar que el email está incluido
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
       debugPrint("Error de Firebase Auth: ${e.message}");
-      return null;
+      rethrow; // Cambiado de return null a rethrow para manejar en UI
     } catch (e) {
       debugPrint("Error general: $e");
+      rethrow;
+    }
+  }
+
+  // Inicio de sesión
+  Future<User?> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      debugPrint("Error de login: ${e.message}");
+      rethrow;
+    } catch (e) {
+      debugPrint("Error general en login: $e");
+      rethrow;
+    }
+  }
+
+  // Cerrar sesión
+  Future<void> signOut() async {
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint("Error al cerrar sesión: $e");
+      rethrow;
+    }
+  }
+
+  // Obtener datos del usuario actual
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        DocumentSnapshot doc = await _firestore
+            .collection('Usuarios')
+            .doc(user.uid)
+            .get();
+        return doc.data() as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Error obteniendo datos de usuario: $e");
       return null;
     }
   }
+
+  // Verificar si el usuario está autenticado
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
 }
+
+// Widgets reutilizables (pueden moverse a archivo aparte)
 class RegisterIcon extends StatelessWidget {
   const RegisterIcon({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Icon(
-      Icons.person_add,  // Puedes cambiar el icono
+      Icons.person_add,
       size: 80,
       color: Colors.white,
     );
