@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
+import 'package:intl/intl.dart';
 
 class CineHomeScreen extends StatefulWidget {
   const CineHomeScreen({super.key});
@@ -16,115 +17,82 @@ class _CineHomeScreenState extends State<CineHomeScreen> {
   final List<Map<String, dynamic>> _peliculas = [];
   bool _isLoading = false;
 
-  // Datos de ejemplo (en un caso real, estos vendrían de Firestore)
-  final Map<String, List<Map<String, dynamic>>> _carteleraPorDia = {
-    'lunes': [
-      {
-        'titulo': 'Duna: Parte Dos',
-        'horarios': ['14:00', '17:00', '20:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BN2QyZGU4MDctYWMyOS00NjAzLTg0ODAtM2MxY2U2MTY2ODNkXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'B15'
-      },
-      {
-        'titulo': 'Kung Fu Panda 4',
-        'horarios': ['15:30', '18:00', '20:30'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BODZhNmIzNGMtYjUyYi00ZjVjLTg0MWQtMmIyZGM3NjE1MTI2XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg',
-        'clasificacion': 'A'
-      }
-    ],
-    'martes': [
-      {
-        'titulo': 'Civil War',
-        'horarios': ['13:30', '16:30', '19:30', '22:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BNWY0YWFmZWItZTBjMS00OGI5LWIyOTYtZGRiM2U4Y2JkNDYwXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'B'
-      }
-    ],
-    'miercoles': [
-      {
-        'titulo': 'Godzilla y Kong: El nuevo imperio',
-        'horarios': ['14:30', '17:30', '20:30'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BZTcxNzgwYjktNzVmNS00YWQ4LTgyYWQtODVjMzE4ZDI2OGI1XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg',
-        'clasificacion': 'B'
-      },
-      {
-        'titulo': 'Abigail',
-        'horarios': ['16:00', '19:00', '22:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MVBNZDc4YjkyYjItYjE1ZC00YzMwLTk1OTAtNDA5ZDI4Y2M5ODU5XkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'C'
-      }
-    ],
-    'jueves': [
-      {
-        'titulo': 'Los tipos malos',
-        'horarios': ['15:00', '17:00', '19:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BZDhkNzU0OTgtYjEzNS00MGUzLThkMWItMDk5YTM5NGY5YjU0XkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'A'
-      }
-    ],
-    'viernes': [
-      {
-        'titulo': 'Challengers',
-        'horarios': ['14:00', '16:30', '19:00', '21:30'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BNDYzNjZjNDktMzA3Ny00Y2M1LTlkYjktZTY0YzQwOTFlY2I0XkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg',
-        'clasificacion': 'B15'
-      },
-      {
-        'titulo': 'Tarot',
-        'horarios': ['15:30', '18:00', '20:30', '23:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BNDY1M2Y0Y2ItYjVhYi00YzI4LTg5OTktODA0ZTI0MWIwYjIxXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'B15'
-      }
-    ],
-    'sabado': [
-      {
-        'titulo': 'El reino del planeta de los simios',
-        'horarios': ['12:00', '15:00', '18:00', '21:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BOWY0MWY1NDQtYjA2Yi00YzE0LTg0OGYtOTQ1YzE4ZDI1OTRlXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'B'
-      },
-      {
-        'titulo': 'Furiosa: De la saga Mad Max',
-        'horarios': ['13:30', '16:30', '19:30', '22:30'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BN2E1N2I0YzktYzU5Yi00Y2U5LWE1NzAtYjU1MmU5YTNjZThjXkEyXkFqcGdeQXVyMTUzMTg2ODkz._V1_.jpg',
-        'clasificacion': 'B15'
-      }
-    ],
-    'domingo': [
-      {
-        'titulo': 'IF',
-        'horarios': ['11:00', '13:30', '16:00', '18:30'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BZTdkYTQzYjMtNjY5Yy00M2RiLTg0OTktODI0M2I0YjQ5ZGY0XkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'A'
-      },
-      {
-        'titulo': 'Back to Black',
-        'horarios': ['14:00', '16:30', '19:00'],
-        'imagen': 'https://m.media-amazon.com/images/M/MV5BODQ3YmM2ZDQtYjgwNy00YzUwLTg1NjAtY2Y0YzhlN2E1OTQxXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg',
-        'clasificacion': 'B15'
-      }
-    ]
-  };
 
+  Future<void> _cargarPeliculasDelDia() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final fechaFormateada = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      debugPrint('🔄 Buscando películas para: $fechaFormateada');
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('peliculas')
+          .get();
+
+      debugPrint('📄 Documentos totales: ${snapshot.docs.length}');
+
+      final peliculasFiltradas = snapshot.docs.where((doc) {
+        final data = doc.data();
+        final fechas = _parsearFechas(data['fechasDisponibles']);
+        debugPrint('📆 Fechas disponibles: ${fechas.join(', ')}');
+        return fechas.contains(fechaFormateada);
+      }).toList();
+
+      debugPrint('🎬 Películas filtradas: ${peliculasFiltradas.length}');
+
+      setState(() {
+        _peliculas.clear();
+        _peliculas.addAll(peliculasFiltradas.map((doc) {
+          final data = doc.data();
+          return {
+            'titulo': data['titulo'] ?? 'Sin título',
+            'horarios': [data['horario'] ?? '--:--'],
+            'imagen': data['imagen'] ?? '',
+            'clasificacion': data['clasificacion'] ?? 'NR',
+            'duracion': data['duracion'] ?? 'Duración no disponible',
+            'sinopsis': data['sinopsis'] ?? '',
+            'salas': data['salas'] ?? 'Sala no asignada',
+            'genero': data['genero'] ?? ''
+          };
+        }));
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      debugPrint('Error: $e');
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  List<String> _parsearFechas(dynamic fechasInput) {
+    if (fechasInput is List) {
+      return fechasInput.map((e) => e.toString()).toList();
+    }
+
+    try {
+      // Intenta parsear si es un String con formato de array
+      final fechasStr = fechasInput.toString()
+          .replaceAll('[', '')
+          .replaceAll(']', '')
+          .replaceAll('"', '')
+          .replaceAll(' ', '');
+      return fechasStr.split(',');
+    } catch (e) {
+      debugPrint('Error parseando fechas: $e');
+      return [];
+    }
+  }
   @override
   void initState() {
     super.initState();
     _cargarPeliculasDelDia();
   }
 
-  Future<void> _cargarPeliculasDelDia() async {
-    setState(() => _isLoading = true);
-
-    // Simular carga desde Firestore
-    await Future.delayed(const Duration(seconds: 1));
-
-    final diaSemana = _obtenerDiaSemana(_selectedDate);
-    setState(() {
-      _peliculas.clear();
-      _peliculas.addAll(_carteleraPorDia[diaSemana] ?? []);
-      _isLoading = false;
-    });
-  }
 
   String _obtenerDiaSemana(DateTime fecha) {
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -235,7 +203,6 @@ class _PeliculaCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Imagen de la película
           Image.network(
             pelicula['imagen'],
             height: 200,
@@ -246,14 +213,11 @@ class _PeliculaCard extends StatelessWidget {
               child: const Icon(Icons.movie, size: 50),
             ),
           ),
-
-          // Información de la película
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Título y clasificación
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -266,68 +230,73 @@ class _PeliculaCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        pelicula['clasificacion'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            pelicula['clasificacion'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          pelicula['duracion'],
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-
+                const SizedBox(height: 8),
+                Text(
+                  'Género: ${pelicula['genero']}',
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
                 const SizedBox(height: 12),
-
-                // Horarios
                 const Text(
-                  'Horarios:',
+                  'Horario:',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
                 Wrap(
                   spacing: 8,
-                  runSpacing: 8,
                   children: (pelicula['horarios'] as List).map((horario) {
                     return Chip(
-                      label: Text(horario),
-                      backgroundColor: Colors.black,
+                      label: Text(horario.toString()), // .toString() por seguridad
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 12),
-
-                // Botón de compra
+                Text(
+                  'Sala: ${pelicula['salas']}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  pelicula['sinopsis'],
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Navegar a pantalla de compra
-                    },
+                    onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red[700],
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text(
-                      'Comprar boletos',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black,
-                      ),
-                    ),
+                    child: const Text('Comprar boletos'),
                   ),
                 ),
               ],
