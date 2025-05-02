@@ -219,18 +219,30 @@ class __PeliculaCardState extends State<_PeliculaCard> {
   void _comprarBoletos(String cineteca) {
     final horario = _horariosSeleccionados[cineteca];
     if (horario != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResumenScreen(
-            peliculaId: widget.pelicula['id'],
-            titulo: widget.pelicula['titulo'],
-            cineteca: cineteca,
-            horario: horario,
-            imagen: widget.pelicula['imagen'],
+      try {
+        // 1. Parsea la fecha string a DateTime
+        final fechaFuncion = DateFormat('yyyy-MM-dd').parse(widget.pelicula['fechaSeleccionada']);
+
+        // 2. Navega a ResumenScreen con todos los parámetros requeridos
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResumenScreen(
+              peliculaId: widget.pelicula['id'],
+              titulo: widget.pelicula['titulo'],
+              cineteca: cineteca,
+              horario: horario,
+              imagen: widget.pelicula['imagen'],
+              fechaFuncion: fechaFuncion, // DateTime correctamente parseado
+            ),
           ),
-        ),
-      );
+        );
+      } catch (e) {
+        // Manejo de error si el parseo falla
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al procesar la fecha: $e')),
+        );
+      }
     }
   }
 

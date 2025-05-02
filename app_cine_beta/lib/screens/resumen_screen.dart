@@ -8,6 +8,7 @@ class ResumenScreen extends StatefulWidget {
   final String cineteca;
   final String horario;
   final String imagen;
+  final DateTime fechaFuncion;
 
   const ResumenScreen({
     super.key,
@@ -16,6 +17,7 @@ class ResumenScreen extends StatefulWidget {
     required this.cineteca,
     required this.horario,
     required this.imagen,
+    required this.fechaFuncion,
   });
 
   @override
@@ -245,6 +247,7 @@ class _ResumenScreenState extends State<ResumenScreen> {
                             sala: sala,
                             cantidadAsientos: _cantidadAsientos,
                             precioTotal: _precioPorAsiento * _cantidadAsientos,
+                            fechaFuncion: widget.fechaFuncion,
                           ),
                         ),
                       );

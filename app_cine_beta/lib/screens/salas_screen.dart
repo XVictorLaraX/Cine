@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class SalasScreen extends StatefulWidget {
   final String peliculaId;
@@ -10,6 +11,7 @@ class SalasScreen extends StatefulWidget {
   final String sala;
   final int cantidadAsientos;
   final double precioTotal;
+  final DateTime fechaFuncion;
 
   const SalasScreen({
     super.key,
@@ -20,6 +22,7 @@ class SalasScreen extends StatefulWidget {
     required this.sala,
     required this.cantidadAsientos,
     required this.precioTotal,
+    required this.fechaFuncion,
   });
 
   @override
@@ -72,25 +75,6 @@ class _SalasScreenState extends State<SalasScreen> {
     });
   }
 
-  void _toggleAsiento(String asiento) {
-    setState(() {
-      if (_asientosSeleccionados.contains(asiento)) {
-        _asientosSeleccionados.remove(asiento);
-      } else {
-        if (_asientosSeleccionados.length < widget.cantidadAsientos) {
-          _asientosSeleccionados.add(asiento);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Solo puedes seleccionar ${widget.cantidadAsientos} asiento(s)'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-    });
-  }
-
   Future<void> _guardarReserva() async {
     if (_asientosSeleccionados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,10 +97,26 @@ class _SalasScreenState extends State<SalasScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('Usuario no autenticado');
+      if (user == null) throw Exception('Usuario no autenticado');
+
+      // 1. Verificar asientos ocupados
+      final asientosOcupados = await getAsientosOcupados(
+          widget.peliculaId,
+          widget.horario,
+          widget.sala,
+          widget.fechaFuncion,
+      );
+
+      // 2. Validar disponibilidad
+      final asientosConflictivos = _asientosSeleccionados
+          .where((asiento) => asientosOcupados.contains(asiento))
+          .toList();
+
+      if (asientosConflictivos.isNotEmpty) {
+        throw Exception('Asientos ${asientosConflictivos.join(', ')} ya están ocupados');
       }
 
+      // 3. Crear reserva
       final reserva = {
         'peliculaId': widget.peliculaId,
         'titulo': widget.titulo,
@@ -126,7 +126,8 @@ class _SalasScreenState extends State<SalasScreen> {
         'asientos': _asientosSeleccionados,
         'cantidadAsientos': widget.cantidadAsientos,
         'precioTotal': widget.precioTotal,
-        'fecha': DateTime.now(),
+        'fechaFuncion': DateFormat('yyyy-MM-dd').format(widget.fechaFuncion),
+        'fechaReserva': FieldValue.serverTimestamp(),
         'usuarioId': user.uid,
         'estado': 'pendiente',
       };
@@ -134,7 +135,6 @@ class _SalasScreenState extends State<SalasScreen> {
       await FirebaseFirestore.instance.collection('reservas').add(reserva);
 
       if (!mounted) return;
-
       Navigator.popUntil(context, (route) => route.isFirst);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Reserva realizada con éxito')),
@@ -142,13 +142,66 @@ class _SalasScreenState extends State<SalasScreen> {
     } catch (e) {
       debugPrint('Error al guardar reserva: $e');
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+// Función auxiliar para mostrar snackbars
+  void _mostrarSnackbar(String mensaje, {bool isError = true}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<List<String>> getAsientosOcupados(
+      String peliculaId,
+      String horario,
+      String sala,
+      DateTime fechaFuncion, // Añade fecha como parámetro
+      ) async {
+    try {
+      final fechaFormateada = DateFormat('yyyy-MM-dd').format(fechaFuncion);
+
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('reservas')
+          .where('peliculaId', isEqualTo: peliculaId)
+          .where('horario', isEqualTo: horario)
+          .where('sala', isEqualTo: sala)
+          .where('fechaFuncion', isEqualTo: fechaFormateada) // Nueva condición
+          .get();
+
+      return querySnapshot.docs
+          .expand((doc) => List<String>.from(doc.data()['asientos'] ?? []))
+          .toList();
+    } catch (e) {
+      debugPrint('Error obteniendo asientos ocupados: $e');
+      return [];
+    }
+  }
+
+  void _toggleAsiento(String asiento) {
+    setState(() {
+      if (_asientosSeleccionados.contains(asiento)) {
+        _asientosSeleccionados.remove(asiento);
+      } else {
+        if (_asientosSeleccionados.length < widget.cantidadAsientos) {
+          _asientosSeleccionados.add(asiento);
+        } else {
+          // Mostrar error si excede la cantidad permitida
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Solo puedes seleccionar ${widget.cantidadAsientos} asientos')),
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -185,40 +238,64 @@ class _SalasScreenState extends State<SalasScreen> {
 
           // Asientos
           Expanded(
-            child: ListView.builder(
-              itemCount: sala.length,
-              itemBuilder: (context, filaIndex) {
-                return Center(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: sala[filaIndex].map((asiento) {
-                      final isSelected = _asientosSeleccionados.contains(asiento);
-                      return GestureDetector(
-                        onTap: () => _toggleAsiento(asiento),
-                        child: Container(
-                          width: tamanoAsiento,
-                          height: tamanoAsiento,
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.red : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isSelected ? Colors.red[700]! : Colors.grey,
-                            ),
+            child: FutureBuilder<List<String>>(
+              future: getAsientosOcupados(
+                  widget.peliculaId, widget.horario, widget.sala, widget.fechaFuncion),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final asientosOcupados = snapshot.data ?? [];
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 10,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: 100, // 10x10 asientos
+                  itemBuilder: (context, index) {
+                    final fila = String.fromCharCode(65 + index ~/ 10);
+                    final numero = index % 10 + 1;
+                    final asiento = '$fila$numero';
+                    final isOcupado = asientosOcupados.contains(asiento);
+                    final isSelected = _asientosSeleccionados.contains(asiento);
+
+                    return GestureDetector(
+                      onTap: isOcupado ? null : () => _toggleAsiento(asiento),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isOcupado
+                              ? Colors.red.withOpacity(0.7)
+                              : isSelected
+                              ? Colors.green
+                              : Colors.blue.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isOcupado
+                                ? Colors.red
+                                : isSelected
+                                ? Colors.green[700]!
+                                : Colors.blue,
                           ),
-                          child: Center(
-                            child: Text(
-                              asiento,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            asiento,
+                            style: TextStyle(
+                              color: isOcupado || isSelected
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
