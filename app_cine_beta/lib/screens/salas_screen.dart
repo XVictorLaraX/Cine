@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:app_cine/screens/pago_screen.dart';
 
 class SalasScreen extends StatefulWidget {
   final String peliculaId;
@@ -77,19 +78,12 @@ class _SalasScreenState extends State<SalasScreen> {
 
   Future<void> _guardarReserva() async {
     if (_asientosSeleccionados.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona al menos un asiento')),
-      );
+      _mostrarSnackbar('Selecciona al menos un asiento');
       return;
     }
 
     if (_asientosSeleccionados.length != widget.cantidadAsientos) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Debes seleccionar exactamente ${widget.cantidadAsientos} asiento(s)'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      _mostrarSnackbar('Debes seleccionar exactamente ${widget.cantidadAsientos} asiento(s)');
       return;
     }
 
@@ -99,15 +93,14 @@ class _SalasScreenState extends State<SalasScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
-      // 1. Verificar asientos ocupados
+      // 1. Verificar disponibilidad de asientos (sin guardar aún)
       final asientosOcupados = await getAsientosOcupados(
-          widget.peliculaId,
-          widget.horario,
-          widget.sala,
-          widget.fechaFuncion,
+        widget.peliculaId,
+        widget.horario,
+        widget.sala,
+        widget.fechaFuncion,
       );
 
-      // 2. Validar disponibilidad
       final asientosConflictivos = _asientosSeleccionados
           .where((asiento) => asientosOcupados.contains(asiento))
           .toList();
@@ -116,8 +109,8 @@ class _SalasScreenState extends State<SalasScreen> {
         throw Exception('Asientos ${asientosConflictivos.join(', ')} ya están ocupados');
       }
 
-      // 3. Crear reserva
-      final reserva = {
+      // 2. Preparar datos de reserva (sin guardar)
+      final reservaData = {
         'peliculaId': widget.peliculaId,
         'titulo': widget.titulo,
         'cineteca': widget.cineteca,
@@ -127,24 +120,36 @@ class _SalasScreenState extends State<SalasScreen> {
         'cantidadAsientos': widget.cantidadAsientos,
         'precioTotal': widget.precioTotal,
         'fechaFuncion': DateFormat('yyyy-MM-dd').format(widget.fechaFuncion),
-        'fechaReserva': FieldValue.serverTimestamp(),
         'usuarioId': user.uid,
-        'estado': 'pendiente',
+        'estado': 'pendiente_pago',
       };
 
-      await FirebaseFirestore.instance.collection('reservas').add(reserva);
+      // 3. Navegar a pantalla de pago
+      if (!mounted) return;
+      final pagoExitoso = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => pago_screen(reservaData: reservaData),
+        ),
+      );
 
-      if (!mounted) return;
-      Navigator.popUntil(context, (route) => route.isFirst);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reserva realizada con éxito')),
-      );
+      // 4. Solo guardar si el pago fue exitoso
+      if (pagoExitoso == true) {
+        await FirebaseFirestore.instance.collection('reservas').add({
+          ...reservaData,
+          'fechaReserva': FieldValue.serverTimestamp(),
+          'estado': 'completada',
+        });
+
+        if (!mounted) return;
+        Navigator.popUntil(context, (route) => route.isFirst);
+        _mostrarSnackbar('Reserva y pago completados', isError: false);
+      }
+
     } catch (e) {
-      debugPrint('Error al guardar reserva: $e');
+      debugPrint('Error en reserva: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      _mostrarSnackbar('Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
