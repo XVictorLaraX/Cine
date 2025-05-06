@@ -23,13 +23,13 @@ class _CineHomeScreenState extends State<CineHomeScreen> {
 
     try {
       final fechaFormateada = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      debugPrint('🔄 Buscando películas para: $fechaFormateada');
+      debugPrint('Buscando películas para: $fechaFormateada');
 
       final snapshot = await FirebaseFirestore.instance
           .collection('peliculas')
           .get();
 
-      debugPrint('📄 Documentos totales: ${snapshot.docs.length}');
+      debugPrint('Documentos totales: ${snapshot.docs.length}');
 
       final peliculasFiltradas = snapshot.docs.where((doc) {
         final data = doc.data();
@@ -41,7 +41,7 @@ class _CineHomeScreenState extends State<CineHomeScreen> {
         });
       }).toList();
 
-      debugPrint('🎬 Películas filtradas: ${peliculasFiltradas.length}');
+      debugPrint('Películas filtradas: ${peliculasFiltradas.length}');
 
       setState(() {
         _peliculas.clear();
