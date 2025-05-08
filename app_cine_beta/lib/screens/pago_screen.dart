@@ -30,8 +30,6 @@ class _PagoScreenState extends State<pago_screen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Proceso de Pago'),
-        backgroundColor: Colors.red[700],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -50,7 +48,7 @@ class _PagoScreenState extends State<pago_screen> {
                       'Resumen de Compra',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.red[700],
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -239,9 +237,10 @@ class _PagoScreenState extends State<pago_screen> {
                       child: _isProcessing
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                        'CONFIRMAR PAGO',
+                        'Confirmar Pago',
                         style: TextStyle(
                           fontSize: 18,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
