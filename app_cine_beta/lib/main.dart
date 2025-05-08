@@ -1,3 +1,4 @@
+import 'package:app_cine/screens/cine_navegador.dart';
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -11,6 +12,7 @@ void main() async {
   runApp(const CineApp());
 }
 
+// En main.dart
 class CineApp extends StatelessWidget {
   const CineApp({super.key});
 
@@ -27,6 +29,9 @@ class CineApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const LoginScreen(),
+      routes: {
+        '/home': (context) => const CineNavegador(),
+      },
     );
   }
 }
