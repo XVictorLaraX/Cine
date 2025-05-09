@@ -33,38 +33,14 @@ class SalasScreen extends StatefulWidget {
 class _SalasScreenState extends State<SalasScreen> {
   final List<String> _asientosSeleccionados = [];
   bool _isLoading = false;
-
-  // Mapeo de salas por cineteca
-  final Map<String, List<List<String>>> _mapaSalas = {
-    'SALA 1 CNA': _crearSala1CNA(),
-    'SALA 2 Xoco': _crearSala2Xoco(),
-    // Agregar más salas según sea necesario
-  };
-
-  static List<List<String>> _crearSala1CNA() {
-    return [
-      ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'],
-      ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8'],
-      ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8'],
-      ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'],
-      ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8'],
-    ];
-  }
-
-  static List<List<String>> _crearSala2Xoco() {
-    return [
-      ['A1', 'A2', 'A3', 'A4', 'A5'],
-      ['B1', 'B2', 'B3', 'B4', 'B5'],
-      ['C1', 'C2', 'C3', 'C4', 'C5'],
-      ['D1', 'D2', 'D3', 'D4', 'D5'],
-      ['E1', 'E2', 'E3', 'E4', 'E5'],
-      ['F1', 'F2', 'F3', 'F4', 'F5'],
-    ];
-  }
+  List<List<String>> _salaConfiguracion = [];
+  bool _loadingSala = true;
 
   @override
   void initState() {
     super.initState();
+    _cargarConfiguracionSala();
+
     // Mostrar mensaje informativo sobre la cantidad de asientos a seleccionar
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,6 +50,72 @@ class _SalasScreenState extends State<SalasScreen> {
         ),
       );
     });
+  }
+
+  String? _errorCarga;
+
+  Future<void> _cargarConfiguracionSala() async {
+    try {
+      debugPrint('Buscando sala: "${widget.sala}"');
+
+      final doc = await FirebaseFirestore.instance
+          .collection('salas')
+          .doc(widget.sala.trim())
+          .get();
+
+      if (doc.exists) {
+        debugPrint('Documento encontrado: ${doc.data()}');
+
+        final data = doc.data()!;
+        List<List<String>> nuevaConfiguracion = [];
+
+        // Letras de filas que podrían existir
+        final letrasFilas = [
+          'A', 'B', 'C', 'D', 'E', 'F',
+          'G', 'H', 'I', 'I1', 'J', 'K', 'L', 'M', 'N',
+          'O', 'P', 'Q', 'R'
+        ];
+
+        for (var fila in letrasFilas) {
+          if (data.containsKey(fila)) {
+            String asientosStr = data[fila] as String;
+            debugPrint('Procesando fila $fila: $asientosStr');
+
+            final asientoEsEspecial = RegExp(r'^[A-Z]1$').hasMatch(asientosStr.trim());
+
+            if (asientoEsEspecial) {
+              debugPrint('Fila $fila marcada como vacía ($asientosStr)');
+              nuevaConfiguracion.add([]); // Fila vacía
+              continue;
+            }
+
+            // Procesamiento normal
+            List<String> asientos = asientosStr
+                .split(',')
+                .map((item) {
+              final trimmed = item.trim().replaceAll('"', '');
+              return (trimmed.isEmpty || RegExp(r'^[A-Z]1$').hasMatch(trimmed))
+                  ? ''
+                  : '$fila$trimmed';
+            })
+                .toList();
+
+            debugPrint('Fila $fila procesada: $asientos');
+            nuevaConfiguracion.add(asientos);
+          }
+        }
+
+        setState(() {
+          _salaConfiguracion = nuevaConfiguracion;
+          _loadingSala = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error al cargar configuración de sala: $e');
+      setState(() {
+        _loadingSala = false;
+      });
+    }
   }
 
   Future<void> _guardarReserva() async {
@@ -155,7 +197,6 @@ class _SalasScreenState extends State<SalasScreen> {
     }
   }
 
-// Función auxiliar para mostrar snackbars
   void _mostrarSnackbar(String mensaje, {bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -170,7 +211,7 @@ class _SalasScreenState extends State<SalasScreen> {
       String peliculaId,
       String horario,
       String sala,
-      DateTime fechaFuncion, // Añade fecha como parámetro
+      DateTime fechaFuncion,
       ) async {
     try {
       final fechaFormateada = DateFormat('yyyy-MM-dd').format(fechaFuncion);
@@ -180,7 +221,7 @@ class _SalasScreenState extends State<SalasScreen> {
           .where('peliculaId', isEqualTo: peliculaId)
           .where('horario', isEqualTo: horario)
           .where('sala', isEqualTo: sala)
-          .where('fechaFuncion', isEqualTo: fechaFormateada) // Nueva condición
+          .where('fechaFuncion', isEqualTo: fechaFormateada)
           .get();
 
       return querySnapshot.docs
@@ -200,7 +241,6 @@ class _SalasScreenState extends State<SalasScreen> {
         if (_asientosSeleccionados.length < widget.cantidadAsientos) {
           _asientosSeleccionados.add(asiento);
         } else {
-          // Mostrar error si excede la cantidad permitida
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Solo puedes seleccionar ${widget.cantidadAsientos} asientos')),
           );
@@ -211,9 +251,9 @@ class _SalasScreenState extends State<SalasScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sala = _mapaSalas[widget.sala] ?? _crearSala1CNA();
-    final anchoPantalla = MediaQuery.of(context).size.width;
-    final tamanoAsiento = (anchoPantalla - 40) / (sala[0].length + 2);
+    final screenSize = MediaQuery.of(context).size;
+    final paddingHorizontal = 20.0;
+    final espacioEntreAsientos = 8.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -221,7 +261,7 @@ class _SalasScreenState extends State<SalasScreen> {
       ),
       body: Column(
         children: [
-          // Pantalla de cine
+          // Pantalla
           Container(
             margin: const EdgeInsets.symmetric(vertical: 20),
             height: 30,
@@ -241,9 +281,11 @@ class _SalasScreenState extends State<SalasScreen> {
             ),
           ),
 
-          // Asientos
+          // Contenedor principal de asientos
           Expanded(
-            child: FutureBuilder<List<String>>(
+            child: _loadingSala
+                ? const Center(child: CircularProgressIndicator())
+                : FutureBuilder<List<String>>(
               future: getAsientosOcupados(
                   widget.peliculaId, widget.horario, widget.sala, widget.fechaFuncion),
               builder: (context, snapshot) {
@@ -253,128 +295,214 @@ class _SalasScreenState extends State<SalasScreen> {
 
                 final asientosOcupados = snapshot.data ?? [];
 
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 10,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: 100, // 10x10 asientos
-                  itemBuilder: (context, index) {
-                    final fila = String.fromCharCode(65 + index ~/ 10);
-                    final numero = index % 10 + 1;
-                    final asiento = '$fila$numero';
-                    final isOcupado = asientosOcupados.contains(asiento);
-                    final isSelected = _asientosSeleccionados.contains(asiento);
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Calcular tamaño de asiento dinámico
+                    final maxAsientosPorFila = _salaConfiguracion.fold(
+                        0, (max, fila) => fila.length > max ? fila.length : max);
+                    final tamanoAsiento = ((screenSize.width - paddingHorizontal * 2) -
+                        ((maxAsientosPorFila - 1) * espacioEntreAsientos)) /
+                        maxAsientosPorFila;
 
-                    return GestureDetector(
-                      onTap: isOcupado ? null : () => _toggleAsiento(asiento),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isOcupado
-                              ? Colors.red.withOpacity(0.7)
-                              : isSelected
-                              ? Colors.green
-                              : Colors.blue.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: isOcupado
-                                ? Colors.red
-                                : isSelected
-                                ? Colors.green[700]!
-                                : Colors.blue,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            asiento,
-                            style: TextStyle(
-                              color: isOcupado || isSelected
-                                  ? Colors.white
-                                  : Colors.black,
-                              fontWeight: FontWeight.bold,
+                    return Column(
+                      children: [
+                        // Contenedor de asientos con scroll vertical
+                        Expanded(
+                          child: _loadingSala
+                              ? const Center(child: CircularProgressIndicator())
+                              : FutureBuilder<List<String>>(
+                            future: getAsientosOcupados(
+                              widget.peliculaId,
+                              widget.horario,
+                              widget.sala,
+                              widget.fechaFuncion,
                             ),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+
+                              final asientosOcupados = snapshot.data ?? [];
+
+                              final maxAsientosPorFila = _salaConfiguracion.fold(
+                                  0, (max, fila) => fila.length > max ? fila.length : max);
+                              final tamanoAsiento = ((screenSize.width - paddingHorizontal * 2) -
+                                  ((maxAsientosPorFila - 1) * espacioEntreAsientos)) /
+                                  maxAsientosPorFila;
+
+                              return SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: List.generate(_salaConfiguracion.length, (filaIndex) {
+                                    final fila = _salaConfiguracion[filaIndex];
+                                    final letraFila = String.fromCharCode(65 + filaIndex);
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 10.0, bottom: 4), // opcional: separa visualmente las filas
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '$letraFila',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+
+                                          // Mostrar una fila vacía visible para mantener el alineado
+                                          if (fila.isEmpty)
+                                            SizedBox(height: tamanoAsiento)
+                                          else
+                                            SingleChildScrollView(
+                                              scrollDirection: Axis.horizontal,
+                                              child: Row(
+                                                children: fila.map((asiento) {
+                                                  final isOcupado = asientosOcupados.contains(asiento);
+                                                  final isSelected = _asientosSeleccionados.contains(asiento);
+                                                  final isEmpty = asiento.isEmpty;
+                                                  final numeroAsiento = asiento.replaceAll(RegExp(r'^[A-Z]+'), '');
+
+                                                  return Container(
+                                                    margin: const EdgeInsets.only(left: 8),
+                                                    child: GestureDetector(
+                                                      onTap: isEmpty || isOcupado
+                                                          ? null
+                                                          : () => _toggleAsiento(asiento),
+                                                      child: Container(
+                                                        width: tamanoAsiento,
+                                                        height: tamanoAsiento,
+                                                        decoration: BoxDecoration(
+                                                          color: isEmpty
+                                                              ? Colors.transparent
+                                                              : isOcupado
+                                                              ? Colors.red.withOpacity(0.7)
+                                                              : isSelected
+                                                              ? Colors.green
+                                                              : Colors.blue.withOpacity(0.3),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          border: isEmpty
+                                                              ? null
+                                                              : Border.all(
+                                                            color: isOcupado
+                                                                ? Colors.red
+                                                                : isSelected
+                                                                ? Colors.green[800]!
+                                                                : Colors.blue[700]!,
+                                                            width: 2,
+                                                          ),
+                                                        ),
+                                                        child: Center(
+                                                          child: isEmpty
+                                                              ? null
+                                                              : Text(
+                                                            numeroAsiento,
+                                                            style: TextStyle(
+                                                              fontSize: tamanoAsiento * 0.35,
+                                                              color: isOcupado || isSelected
+                                                                  ? Colors.white
+                                                                  : Colors.black,
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ),
+
+                        // Resumen y botón de compra
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius:
+                            const BorderRadius.vertical(top: Radius.circular(16)),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Asientos: ${_asientosSeleccionados.join(', ')}',
+                                    style: const TextStyle(
+                                        fontSize: 16, color: Colors.white),
+                                  ),
+                                  Text(
+                                    '${_asientosSeleccionados.length}/${widget.cantidadAsientos}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Total:',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '\$${widget.precioTotal.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _guardarReserva,
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    backgroundColor: Colors.red[700],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: _isLoading
+                                      ? const CircularProgressIndicator(
+                                      color: Colors.white)
+                                      : const Text(
+                                    'Confirmar Reserva',
+                                    style: TextStyle(
+                                        fontSize: 18, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   },
                 );
               },
-            ),
-          ),
-
-          // Resumen y botón de compra
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Asientos: ${_asientosSeleccionados.join(', ')}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    Text(
-                      '${_asientosSeleccionados.length}/${widget.cantidadAsientos}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total:',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '\$${widget.precioTotal.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _guardarReserva,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.red[700],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                      'Confirmar Reserva',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
