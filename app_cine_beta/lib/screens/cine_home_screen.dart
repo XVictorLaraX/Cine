@@ -111,39 +111,11 @@ class _CineHomeScreenState extends State<CineHomeScreen> {
     return dias[fecha.weekday % 7];
   }
 
-  Future<void> _signOut() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      if (!mounted) return;
-
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (Route<dynamic> route) => false,
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cerrar sesión: ${e.toString()}')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final diaSemana = _obtenerDiaSemana(_selectedDate);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cineteca Nacional'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
-            tooltip: 'Cerrar sesión',
-          ),
-        ],
-      ),
       body: Column(
         children: [
           SizedBox(

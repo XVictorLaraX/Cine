@@ -38,6 +38,12 @@ dependencies:
   firebase_auth: ^5.5.3
   cloud_firestore: ^5.6.7
   syncfusion_flutter_calendar: ^29.1.41
+  geolocator: ^13.0.4
+  intl: ^0.20.2
+  flutter_map: ^8.1.1
+  latlong2: ^0.9.1  # Para manejar coordenadas
+  flutter_polyline_points: ^2.1.0  # Para calcular rutas
+  http: ^1.4.0  # Para hacer peticiones a la API de OSRM
 
 
 

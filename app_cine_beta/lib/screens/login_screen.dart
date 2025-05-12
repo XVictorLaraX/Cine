@@ -1,7 +1,7 @@
+import 'package:app_cine/screens/cine_navegador.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_cine/services/firebase_service.dart';
-import 'package:app_cine/screens/cine_home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (user != null) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const CineHomeScreen()),
+            MaterialPageRoute(builder: (_) => const CineNavegador()),
           );
         }
       } on FirebaseAuthException catch (e) {
@@ -96,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const MovieIcon(),
                     const SizedBox(height: 30),
-                    const WelcomeTitle(),
                     const SizedBox(height: 40),
                     _buildLoginForm(),
                     const SizedBox(height: 20),
@@ -245,24 +244,3 @@ class MovieIcon extends StatelessWidget {
   }
 }
 
-class WelcomeTitle extends StatelessWidget {
-  const WelcomeTitle({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      width: double.infinity,
-      child: Center(
-        child: Text(
-          'Bienvenido a la Cineteca Nacional',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
