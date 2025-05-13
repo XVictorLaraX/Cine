@@ -1,6 +1,7 @@
 import 'package:app_cine/screens/cine_home_screen.dart';
 import 'package:app_cine/screens/login_screen.dart';
 import 'package:app_cine/screens/ubicacion_screen.dart';
+import 'package:app_cine/screens/mis_boletos_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -16,6 +17,7 @@ class _CineNavegadorState extends State<CineNavegador> {
 
   final List<Widget> _pantallas = [
     const CineHomeScreen(),
+    const MisBoletosScreen(),
     const UbicacionScreen(),
   ];
 
@@ -69,9 +71,15 @@ class _CineNavegadorState extends State<CineNavegador> {
                 ),
                 _BotonNavegacion(
                   icono: Icons.location_on,
-                  etiqueta: 'Ubicación',
+                  etiqueta: 'Mis boletos',
                   activo: _indiceActual == 1,
                   onTap: () => _cambiarPantalla(1),
+                ),
+                _BotonNavegacion(
+                  icono: Icons.location_on,
+                  etiqueta: 'Ubicación',
+                  activo: _indiceActual == 2,
+                  onTap: () => _cambiarPantalla(2),
                 ),
               ],
             ),

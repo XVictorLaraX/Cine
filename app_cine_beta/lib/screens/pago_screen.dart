@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:app_cine/screens/cine_navegador.dart';
 
 class pago_screen extends StatefulWidget {
   final Map<String, dynamic> reservaData;
@@ -17,6 +20,15 @@ class _PagoScreenState extends State<pago_screen> {
   final TextEditingController _expiryDateController = TextEditingController();
   final TextEditingController _cvvController = TextEditingController();
   bool _isProcessing = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late DateTime fechaFuncion;
+
+  @override
+  void initState() {
+    super.initState();
+    fechaFuncion = DateTime.now(); // Initialize fechaFuncion
+  }
 
   @override
   void dispose() {
@@ -24,6 +36,94 @@ class _PagoScreenState extends State<pago_screen> {
     _expiryDateController.dispose();
     _cvvController.dispose();
     super.dispose();
+  }
+
+  Future<void> _crearReservaYBoleto() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Usuario no autenticado');
+
+    // 1. Crear la reserva
+    final reservaData = {
+      'userId': user.uid,
+      'peliculaId': widget.reservaData['peliculaId'],
+      'titulo': widget.reservaData['titulo'],
+      'cineteca': widget.reservaData['cineteca'],
+      'sala': widget.reservaData['sala'],
+      'horario': widget.reservaData['horario'],
+      'fechaFuncion': widget.reservaData['fechaFuncion'],
+      'asientos': widget.reservaData['asientos'],
+      'cantidadAsientos': widget.reservaData['cantidadAsientos'],
+      'precioUnitario': widget.reservaData['precioPorAsiento'],
+      'precioTotal': widget.reservaData['precioTotal'],
+      'fechaReserva': FieldValue.serverTimestamp(),
+      'estado': 'completada',
+      'metodoPago': 'Tarjeta terminada en ${_cardNumberController.text.substring(15)}',
+    };
+
+    final reservaRef = await _firestore.collection('reservas').add(reservaData);
+
+    // 2. Crear el boleto
+    final boletoData = {
+      'userId': user.uid,
+      'reservaId': reservaRef.id,
+      'peliculaId': widget.reservaData['peliculaId'],
+      'titulo': widget.reservaData['titulo'],
+      'cineteca': widget.reservaData['cineteca'],
+      'sala': widget.reservaData['sala'],
+      'horario': widget.reservaData['horario'],
+      'fechaFuncion': widget.reservaData['fechaFuncion'],
+      'asientos': widget.reservaData['asientos'],
+      'cantidadAsientos': widget.reservaData['cantidadAsientos'],
+      'precioUnitario': widget.reservaData['precioPorAsiento'],
+      'precioTotal': widget.reservaData['precioTotal'],
+      'fechaCompra': FieldValue.serverTimestamp(),
+      'estado': 'activo',
+      'metodoPago': 'Tarjeta terminada en ${_cardNumberController.text.substring(15)}',
+    };
+
+    await _firestore.collection('boletos').add(boletoData);
+  }
+
+  Future<void> _processPayment() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      // Simular procesamiento de pago (2 segundos)
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Crear reserva y boleto después del pago exitoso
+      await _crearReservaYBoleto();
+
+      if (!mounted) return;
+
+      // Redireccionar a Mis Boletos
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CineNavegador(),
+        ),
+            (route) => false,
+      );
+
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pago completado y reserva creada exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isProcessing = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error en el pago: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -48,14 +148,16 @@ class _PagoScreenState extends State<pago_screen> {
                       'Resumen de Compra',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 10),
                     _buildDetailRow('Película:', widget.reservaData['titulo']),
+                    _buildDetailRow('Cineteca:', widget.reservaData['cineteca']),
                     _buildDetailRow('Sala:', widget.reservaData['sala']),
+                    _buildDetailRow('Fecha:', DateFormat('yyyy-MM-dd').format(fechaFuncion)),
                     _buildDetailRow('Horario:', widget.reservaData['horario']),
-                    _buildDetailRow('Asientos:', widget.reservaData['asientos'].join(', ')),
+                    _buildDetailRow('Asientos:', (widget.reservaData['asientos'] as List).join(', ')),
+                    _buildDetailRow('Cantidad:', widget.reservaData['cantidadAsientos'].toString()),
                     const Divider(),
                     _buildDetailRow(
                       'Total:',
@@ -208,26 +310,7 @@ class _PagoScreenState extends State<pago_screen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () async {
-                        if (_formKey.currentState!.validate()) {
-                          setState(() => _isProcessing = true);
-
-                          try {
-                            // Simular procesamiento de pago
-                            await Future.delayed(const Duration(seconds: 2));
-
-                            // Retornar éxito
-                            if (mounted) Navigator.pop(context, true);
-                          } catch (e) {
-                            if (mounted) {
-                              setState(() => _isProcessing = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error en pago: ${e.toString()}')),
-                              );
-                            }
-                          }
-                        }
-                      },
+                      onPressed: _processPayment,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red[700],
                         shape: RoundedRectangleBorder(
@@ -282,45 +365,6 @@ class _PagoScreenState extends State<pago_screen> {
       ),
     );
   }
-
-  Future<void> _processPayment() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isProcessing = true);
-
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-
-      await FirebaseFirestore.instance
-          .collection('reservas')
-          .doc(widget.reservaData['reservaId'])
-          .update({
-        'estado': 'completada',
-        'fechaPago': FieldValue.serverTimestamp(),
-        'metodoPago': 'Tarjeta terminada en ${_cardNumberController.text.substring(15)}',
-      });
-
-      if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaymentSuccessScreen(
-            reservationId: widget.reservaData['reservaId'],
-          ),
-        ),
-            (route) => false,
-      );
-    } catch (e) {
-      setState(() => _isProcessing = false);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error en el pago: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 }
 
 class CardNumberFormatter extends TextInputFormatter {
@@ -363,43 +407,6 @@ class CardExpiryFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-class PaymentSuccessScreen extends StatelessWidget {
-  final String reservationId;
-
-  const PaymentSuccessScreen({Key? key, required this.reservationId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 80),
-            const SizedBox(height: 20),
-            Text(
-              'Pago Completado',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Reserva #$reservationId',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-              child: const Text('Volver al inicio'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
