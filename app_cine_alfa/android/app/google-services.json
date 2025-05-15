@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189786191511",
+    "project_id": "app-cine-8a3e6",
+    "storage_bucket": "app-cine-8a3e6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189786191511:android:23eafad25ab6e43f015bd2",
+        "android_client_info": {
+          "package_name": "com.example.app_cine"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQ7NVbWuaNhsfbjxBfIBg9LjM6o788WBI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

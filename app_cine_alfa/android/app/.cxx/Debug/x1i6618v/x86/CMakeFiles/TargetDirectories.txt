@@ -1,0 +1,2 @@
+C:/Users/victo/AndroidStudioProjects/app_cine_beta/android/app/.cxx/Debug/x1i6618v/x86/CMakeFiles/edit_cache.dir
+C:/Users/victo/AndroidStudioProjects/app_cine_beta/android/app/.cxx/Debug/x1i6618v/x86/CMakeFiles/rebuild_cache.dir
