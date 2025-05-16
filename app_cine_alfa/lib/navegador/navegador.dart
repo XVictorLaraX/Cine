@@ -15,7 +15,7 @@ class Navegador extends StatefulWidget {
 
 class _EstadoMenuPrincipal extends State<Navegador> {
   // Controla qué sección está visible actualmente
-  int _seccionActual = 0;
+  int _seccionActual = 0; // Inicia con el indice 0
 
   // Todas las pantallas disponibles en nuestra app
   final List<Widget> _secciones = [

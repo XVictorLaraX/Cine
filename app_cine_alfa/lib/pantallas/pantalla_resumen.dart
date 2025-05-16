@@ -24,7 +24,7 @@ class PantallaResumen extends StatefulWidget {
   @override
   State<PantallaResumen> createState() => _EstadoPantallaResumen();
 }
-
+// Valores por default
 class _EstadoPantallaResumen extends State<PantallaResumen> {
   int _asientosSeleccionados = 1;  // Cantidad de asientos, mínimo 1
   double _precioAsiento = 0.0;     // Precio por cada asiento
@@ -42,8 +42,8 @@ class _EstadoPantallaResumen extends State<PantallaResumen> {
     try {
       // Obtenemos el documento de la película
       final doc = await FirebaseFirestore.instance
-          .collection('peliculas')
-          .doc(widget.idPelicula)
+          .collection('peliculas') // Busca la colección
+          .doc(widget.idPelicula) //Busca el Id especifico entre todos los documentos
           .get();
 
       if (doc.exists) {
@@ -79,7 +79,7 @@ class _EstadoPantallaResumen extends State<PantallaResumen> {
       });
     }
   }
-
+  // Widget de la pantalla
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -202,7 +202,7 @@ class _EstadoPantallaResumen extends State<PantallaResumen> {
                     }
                   },
                 ),
-                // Cantidad actual
+                // Cantidad actual de asientos seleccionados
                 Text(
                   '$_asientosSeleccionados',
                   style: const TextStyle(
@@ -312,7 +312,7 @@ class _EstadoPantallaResumen extends State<PantallaResumen> {
     );
   }
 
-  // Helper para crear filas de información con icono
+  // Widget para crear filas de información con icono
   Widget _crearFilaInfo(IconData icono, String texto) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

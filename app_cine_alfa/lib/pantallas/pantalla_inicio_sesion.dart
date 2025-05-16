@@ -10,7 +10,7 @@ class PantallaInicioSesion extends StatefulWidget {
   @override
   State<PantallaInicioSesion> createState() => _EstadoPantallaInicioSesion();
 }
-
+// Pantalla principal para el login
 class _EstadoPantallaInicioSesion extends State<PantallaInicioSesion> {
   final FirebaseService _servicioAuth = FirebaseService();
   final _claveFormulario = GlobalKey<FormState>();
@@ -27,7 +27,7 @@ class _EstadoPantallaInicioSesion extends State<PantallaInicioSesion> {
     _controladorContrasena.dispose();
     super.dispose();
   }
-
+// Formulario de login. Correo y contraseña
   Future<void> _iniciarSesion() async {
     if (_claveFormulario.currentState!.validate()) {
       setState(() => _cargando = true);
@@ -43,6 +43,7 @@ class _EstadoPantallaInicioSesion extends State<PantallaInicioSesion> {
             MaterialPageRoute(builder: (_) => const Navegador()),
           );
         }
+        // Posibles errores si los datos no son validos
       } on FirebaseAuthException catch (e) {
         String mensajeError;
         switch (e.code) {
@@ -70,7 +71,7 @@ class _EstadoPantallaInicioSesion extends State<PantallaInicioSesion> {
       }
     }
   }
-
+// Construcción del widget
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,7 +110,7 @@ class _EstadoPantallaInicioSesion extends State<PantallaInicioSesion> {
       ),
     );
   }
-
+// Formulario
   Widget _construirFormularioLogin() {
     return Container(
       padding: const EdgeInsets.all(24.0),

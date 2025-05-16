@@ -67,8 +67,8 @@ class _EstadoPantallaPrincipalCine extends State<PantallaPrincipalCine> {
       }).toList();
 
       setState(() {
-        _listadoPeliculas.clear();
-        _listadoPeliculas.addAll(peliculasDisponibles.map((doc) {
+        _listadoPeliculas.clear(); //limpia las peliculas de la fecha anterior
+        _listadoPeliculas.addAll(peliculasDisponibles.map((doc) { // carga las nuevas peliculas de la fecha seleccionada
           final datos = doc.data();
           final horariosPorCine = datos['horariosPorCineteca'] as Map<String, dynamic>? ?? {};
 
@@ -89,7 +89,7 @@ class _EstadoPantallaPrincipalCine extends State<PantallaPrincipalCine> {
           }).where((cine) => cine['tieneHorarios'] == true)
               .map((cine) => cine['cineteca'] as String)
               .toList();
-
+          // constructor por default si no encuentra los datos
           return {
             'id': doc.id,
             'titulo': datos['titulo'] ?? 'Sin título',
@@ -105,7 +105,7 @@ class _EstadoPantallaPrincipalCine extends State<PantallaPrincipalCine> {
         }));
         _cargando = false;
       });
-
+    // Si no puede acceder a FireStore
     } catch (e) {
       debugPrint('Error al cargar películas: $e');
       setState(() => _cargando = false);
@@ -123,7 +123,7 @@ class _EstadoPantallaPrincipalCine extends State<PantallaPrincipalCine> {
     if (fechasInput is List) {
       return fechasInput.map((e) => e.toString()).toList();
     }
-
+    // Convierte la lista de fechas en un string
     try {
       final fechasStr = fechasInput.toString()
           .replaceAll('[', '')
@@ -274,19 +274,18 @@ class _EstadoTarjetaPelicula extends State<_TarjetaPelicula> {
             ),
           ),
         );
-      } catch (e) {
+      } catch (e) { // Error de procesamiento
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al procesar la fecha: $e')),
         );
       }
     }
   }
-
+  // Widget para las tarjetas de cada pelicula
   @override
   Widget build(BuildContext context) {
     final horariosPorCine = widget.pelicula['horariosPorCineteca'] as Map<String, dynamic>? ?? {};
     final cinesDisponibles = widget.pelicula['cinesDisponibles'] as List<String>? ?? [];
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(

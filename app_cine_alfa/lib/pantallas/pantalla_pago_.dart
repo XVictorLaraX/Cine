@@ -33,7 +33,7 @@ class _EstadoPantallaPago extends State<PantallaPago> {
 
   @override
   void dispose() {
-    // Limpiamos los controladores para evitar memory leaks
+    // Limpiamos los controladores al destruir el widget
     _controladorNumeroTarjeta.dispose();
     _controladorFechaVencimiento.dispose();
     _controladorCVV.dispose();
@@ -45,7 +45,7 @@ class _EstadoPantallaPago extends State<PantallaPago> {
     final usuario = _auth.currentUser;
     if (usuario == null) throw Exception('No hay usuario logeado');
 
-    // 1. Primero creamos la reserva
+    // Creación de la reserva con los datos seleccionados
     final datosReserva = {
       'userId': usuario.uid,
       'peliculaId': widget.datosReserva['peliculaId'],
@@ -65,7 +65,7 @@ class _EstadoPantallaPago extends State<PantallaPago> {
 
     final referenciaReserva = await _firestore.collection('reservas').add(datosReserva);
 
-    // 2. Luego creamos el boleto asociado
+    // Luego se crea el boleto asociado con los mismos datos
     final datosBoleto = {
       'userId': usuario.uid,
       'reservaId': referenciaReserva.id,
@@ -97,7 +97,7 @@ class _EstadoPantallaPago extends State<PantallaPago> {
       // Simulamos el procesamiento del pago (2 segundos)
       await Future.delayed(const Duration(seconds: 2));
 
-      // Guardamos la reserva y el boleto
+      // Guardamos la reserva y el boleto en sus respectivas colecciones de FireStore
       await _guardarReservaYBoleto();
 
       if (!mounted) return;
@@ -205,6 +205,7 @@ class _EstadoPantallaPago extends State<PantallaPago> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            // Tarjeta de resumen para verificar que los datos sean correctos
             const SizedBox(height: 10),
             _crearFilaDetalle('Película:', widget.datosReserva['titulo']),
             _crearFilaDetalle('Cineteca:', widget.datosReserva['cineteca']),
@@ -363,7 +364,7 @@ class _EstadoPantallaPago extends State<PantallaPago> {
     );
   }
 
-  // Helper para crear filas de detalle
+  // widget para crear los elementos que iran en la tarjeta de resumen
   Widget _crearFilaDetalle(String etiqueta, String valor, {bool negrita = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),

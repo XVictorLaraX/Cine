@@ -15,14 +15,15 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
     with AutomaticKeepAliveClientMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final Map<String, bool> _tarjetasExpandidas = {}; // Controla qué tarjetas están abiertas
+  final Map<String, bool> _tarjetasExpandidas = {};
+  // Controla qué tarjetas están abiertas en ese momento
 
   @override
   bool get wantKeepAlive => true; // Mantiene el estado al cambiar de pestaña
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Necesario para AutomaticKeepAliveClientMixin
+    super.build(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,11 +33,12 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
     );
   }
 
-  // Widget principal que construye la lista de boletos
+  // Widget principal que construye la lista de boletos existentes
   Widget _construirListaBoletos() {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('boletos')
           .where('userId', isEqualTo: _auth.currentUser?.uid)
+      // Toma el id del usuario para buscar solo los boletos que haya comprado
           .snapshots(),
       builder: (context, snapshot) {
         // Manejo de errores
@@ -44,7 +46,7 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
           return Center(child: Text('Algo salió mal: ${snapshot.error}'));
         }
 
-        // Mostrar spinner mientras carga
+        // Mostrar spinner/progress bar mientras carga
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -93,13 +95,13 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
         },
         leading: const Icon(Icons.movie, color: Colors.red),
         title: Text(
-          boleto['titulo'] ?? 'Película no especificada',
+          boleto['titulo'] ?? 'Película no especificada', // Si no encuentra el titulo de la pelicula
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         subtitle: Text(
-          '${boleto['cineteca'] ?? 'Cine'} - Sala ${boleto['sala'] ?? '?'}',
+          '${boleto['cineteca'] ?? 'Cine'} - Sala ${boleto['sala'] ?? '?'}', // Si no hay Cine o sala
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         trailing: Icon(
@@ -111,7 +113,7 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Información básica del boleto
+                // Información básica del boleto, obtenida de la base de datos o ?? default
                 _construirFilaInfo('Fecha:', _formatearFecha(boleto['fechaFuncion'])),
                 _construirFilaInfo("Horario:", boleto['horario'] ?? 'No especificado'),
                 _construirFilaInfo('Asientos:', _formatearAsientos(boleto['asientos'])),
@@ -120,15 +122,15 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
                 const Divider(height: 24),
 
                 // Información de precios
-                _construirFilaInfo('Precio unitario:',
-                    '\$${boleto['precioUnitario']?.toStringAsFixed(2) ?? '0.00'}'),
-                _construirFilaInfo('Total pagado:',
-                    '\$${boleto['precioTotal']?.toStringAsFixed(2) ?? '0.00'}',
+                _construirFilaInfo('Precio unitario:', // cuanto vale cada boleto
+                    '\$${boleto['precioUnitario']?.toStringAsFixed(2) ?? '0.00'}'), // Si no lo encuentra
+                _construirFilaInfo('Total pagado:', // Sumatoria de los boletos
+                    '\$${boleto['precioTotal']?.toStringAsFixed(2) ?? '0.00'}', // Si no lo encuentra vale 0
                     negrita: true),
 
                 const Divider(height: 24),
 
-                // Información de compra
+                // Información de los datos de compra
                 _construirFilaInfo('Método de pago:', boleto['metodoPago'] ?? 'No especificado'),
                 _construirFilaInfo('Fecha de compra:',
                     _formatearFechaHora(boleto['fechaCompra'])),
@@ -145,14 +147,14 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
     );
   }
 
-  // Helper para formatear la fecha de la función
+  // Helper para formatear la fecha de la función en caso de que este como timestamp
   String _formatearFecha(dynamic fecha) {
     if (fecha is Timestamp) {
       return DateFormat('dd/MM/yyyy').format(fecha.toDate());
     } else if (fecha is String) {
       return fecha;
     }
-    return 'Fecha no disponible';
+    return 'Fecha no disponible'; // Si no puede convertirlo
   }
 
   // Helper para formatear fecha y hora
@@ -163,7 +165,7 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
     return 'Fecha no disponible';
   }
 
-  // Helper para formatear la lista de asientos
+  // Helper para formatear la lista de asientos como lista
   String _formatearAsientos(dynamic asientos) {
     if (asientos is List) {
       return asientos.join(', ');
@@ -200,7 +202,7 @@ class _EstadoMisBoletos extends State<PantallaMisBoletos>
   Widget _construirChipEstado(String estado) {
     Color color;
     String texto;
-
+    // Diferentes estados que puede presentar un boleto
     switch (estado.toLowerCase()) {
       case 'activo':
         color = Colors.green;

@@ -33,16 +33,16 @@ class PantallaSeleccionarAsiento extends StatefulWidget {
 
 class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
   late Future<List<String>> _futureAsientosOcupados; // Futuro para los asientos ya ocupados
-  final List<String> _misAsientos = []; // Asientos que voy seleccionando
-  bool _cargando = false; // Para mostrar spinner durante operaciones
+  final List<String> _misAsientos = []; // Lista para los asientos que se van seleccionando
+  bool _cargando = false; // Elemento visual de carga, cambia a true cuando se realice un proceso
   List<List<String>> _disposicionSala = []; // Cómo está organizada la sala
-  bool _cargandoSala = true; // Spinner mientras carga la sala
+  bool _cargandoSala = true; // Comienza a cargar mientras carga la sala
   String? _errorCarga; // Por si algo falla
 
   @override
   void initState() {
     super.initState();
-    _cargarDisposicionSala(); // Al iniciar, cargamos cómo está organizada la sala
+    _cargarDisposicionSala(); // Al iniciar, se carga cómo está organizada la sala
     _futureAsientosOcupados = _obtenerAsientosOcupados(
       widget.idPelicula,
       widget.horario,
@@ -50,7 +50,7 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
       widget.fechaFuncion,
     );
 
-    // Mensajito para recordar cuántos asientos debe seleccionar
+    // Mensaje para recordar cuántos asientos deben ser seleccionados
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -77,10 +77,10 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
         final datos = doc.data()!;
         List<List<String>> nuevaDisposicion = [];
 
-        // Posibles filas que puede tener la sala
+        // Posibles filas que puede tener la sala. Máximo encontrado (R)
         final letrasFilas = [
           'A', 'B', 'C', 'D', 'E', 'F',
-          'G', 'H', 'I', 'I1', 'J', 'K', 'L', 'M', 'N',
+          'G', 'H', 'I', 'I1', 'J', 'K', 'L', 'M', 'N', // I1 representa filas en blanco
           'O', 'P', 'Q', 'R'
         ];
 
@@ -114,9 +114,9 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
           }
         }
 
-        setState(() {
+        setState(() { // Se cargan los datos obtenidos
           _disposicionSala = nuevaDisposicion;
-          _cargandoSala = false;
+          _cargandoSala = false; // El elemento de carga vuelve a hacerse false
         });
       }
     } catch (e) {
@@ -146,23 +146,23 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
       final usuario = FirebaseAuth.instance.currentUser;
       if (usuario == null) throw Exception('No hay usuario logeado');
 
-      // 1. Verificar que los asientos sigan disponibles
+      // Verifica que los asientos seleccionados sigan disponibles
       final asientosOcupados = await _obtenerAsientosOcupados(
         widget.idPelicula,
         widget.horario,
         widget.sala,
         widget.fechaFuncion,
       );
-
+      // Si ya fueron seleccionados mientras se estaba procesando
       final asientosEnConflicto = _misAsientos
           .where((asiento) => asientosOcupados.contains(asiento))
           .toList();
-
+      // Menaje de error
       if (asientosEnConflicto.isNotEmpty) {
         throw Exception('Los asientos ${asientosEnConflicto.join(', ')} ya están ocupados');
       }
 
-      // 2. Preparar datos para la reserva
+      // Preparar datos para la reserva si no hubo problemas
       final datosReserva = {
         'peliculaId': widget.idPelicula,
         'titulo': widget.titulo,
@@ -177,7 +177,7 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
         'estado': 'pendiente_pago', // Se confirmará después del pago
       };
 
-      // 3. Ir a pantalla de pago
+      // Ir a pantalla de pago
       if (!mounted) return;
       final pagoExitoso = await Navigator.push<bool>(
         context,
@@ -186,7 +186,7 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
         ),
       );
 
-      // 4. Si el pago fue exitoso, guardar la reserva
+      // Si el pago fue exitoso, guardar la reserva en Firebase
       if (pagoExitoso == true) {
         await FirebaseFirestore.instance.collection('reservas').add({
           ...datosReserva,
@@ -208,7 +208,7 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
     }
   }
 
-  // Helper para mostrar mensajes tipo Snackbar
+  // Metodo para mostrar mensajes tipo Snackbar
   void _mostrarMensaje(String texto, {bool esError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -219,16 +219,16 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
     );
   }
 
-  // Obtener asientos ya ocupados para esta función
+  // Obtener asientos ya ocupados con esta función
   Future<List<String>> _obtenerAsientosOcupados(
       String idPelicula,
       String horario,
       String sala,
       DateTime fechaFuncion,
       ) async {
-    try {
+    try {// Formatea la fecha para evitar conflictos
       final fechaFormateada = DateFormat('yyyy-MM-dd').format(fechaFuncion);
-
+      // Recupera los datos de firestore
       final query = await FirebaseFirestore.instance
           .collection('reservas')
           .where('peliculaId', isEqualTo: idPelicula)
@@ -263,7 +263,7 @@ class _EstadoPantallaSalas extends State<PantallaSeleccionarAsiento> {
       }
     });
   }
-
+  // Widget principal
   @override
   Widget build(BuildContext context) {
     final tamanoPantalla = MediaQuery.of(context).size;

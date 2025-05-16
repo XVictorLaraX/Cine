@@ -17,7 +17,7 @@ class PantallaUbicacion extends StatefulWidget {
 
 class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
     with AutomaticKeepAliveClientMixin {
-
+  // Constructor por default
   @override
   bool get wantKeepAlive => true;
 
@@ -30,12 +30,13 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
   final MapController _controladorMapa = MapController();
   String? _cineSeleccionado;
 
+  // Valores fijos para cada cineteca
   final Map<String, LatLng> _cinesDisponibles = {
     'Cineteca Nacional México': const LatLng(19.360724, -99.164477),
     'Cineteca Nacional de las Artes': const LatLng(19.356206, -99.135220),
     'Cineteca Nacional Chapultepec': const LatLng(19.388790, -99.228939),
   };
-
+  // Funcion para solicitar permiso de acceder a la ubicación del dispositivo
   Future<Position> _obtenerPermisosUbicacion() async {
     bool servicioActivo;
     LocationPermission permiso;
@@ -54,20 +55,20 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
         return Future.error('Necesitamos acceso a tu ubicación');
       }
     }
-
+    // Si la opción esta bloqueada en los ajustes del dispositivo
     if (permiso == LocationPermission.deniedForever) {
       return Future.error('Debes habilitar los permisos en ajustes');
     }
 
     return await Geolocator.getCurrentPosition();
   }
-
+  // Recupera los datos de la ubicación
   Future<void> _guardarUbicacion(double latitud, double longitud) async {
     final usuario = FirebaseAuth.instance.currentUser;
     if (usuario == null) {
       throw Exception('Debes iniciar sesión');
     }
-
+    // Recupera los datos del usuario desde Firebase y adjunta los valores de su ubicación actual a otra coleccion
     try {
       await FirebaseFirestore.instance
           .collection('ubicaciones_usuarios')
@@ -96,7 +97,7 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
         _cargando = true;
         _textoCoordenadas = "Buscando tu ubicación...";
       });
-
+      // No actua hasta que se acepte el uso de la ubicación
       final posicion = await _obtenerPermisosUbicacion();
 
       setState(() {
@@ -119,7 +120,7 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
       setState(() => _cargando = false);
     }
   }
-
+  // Función para dibujar una ruta hasta la cineteca elegida
   Future<void> _calcularRuta() async {
     if (_miPosicionActual == null || _destinoSeleccionado == null) return;
 
@@ -156,7 +157,7 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
       setState(() => _cargando = false);
     }
   }
-
+  // Elige una de las cinetecas
   void _seleccionarCine(String? value) {
     if (value == null) return;
 
@@ -169,7 +170,7 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
       _calcularRuta();
     }
   }
-
+  // Limpia los datos anteriores
   void _limpiarSeleccion() {
     setState(() {
       _cineSeleccionado = null;
@@ -177,7 +178,7 @@ class _EstadoPantallaUbicacion extends State<PantallaUbicacion>
       _puntosRuta.clear();
     });
   }
-
+  // Widget para la pantalla
   @override
   Widget build(BuildContext context) {
     super.build(context);

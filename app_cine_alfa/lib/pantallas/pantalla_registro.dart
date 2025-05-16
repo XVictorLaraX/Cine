@@ -86,7 +86,7 @@ class _EstadoPantallaRegistro extends State<PantallaRegistro> {
       }
     }
   }
-
+  // Construir el widget
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,7 +132,7 @@ class _EstadoPantallaRegistro extends State<PantallaRegistro> {
       ),
     );
   }
-
+// Constructor del formulario
   Widget _construirFormularioRegistro() {
     return Container(
       padding: const EdgeInsets.all(24.0),

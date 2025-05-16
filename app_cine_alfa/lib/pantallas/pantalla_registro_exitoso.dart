@@ -7,12 +7,12 @@ class PantallaRegistroExitoso extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // La barrita de arriba con el título
+      // Muestra la barra superior con el título siguiente
       appBar: AppBar(
         title: const Text('Todo listo'),
       ),
 
-      // Lo que se ve en el centro de la pantalla
+      // El cuerpo o centro de la pantalla
       body: const Center(
         child: Text(
           '¡Listo! Ya estás registrado', // Mensaje de regitro
